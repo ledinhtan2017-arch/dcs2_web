@@ -1,0 +1,27 @@
+-- Migration 012: Create orders table
+CREATE TABLE IF NOT EXISTS orders (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_code VARCHAR(20) NOT NULL UNIQUE,
+    user_id INT UNSIGNED DEFAULT NULL,
+    customer_name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    shipping_address_json JSON NOT NULL,
+    subtotal DECIMAL(12,0) NOT NULL,
+    discount_total DECIMAL(12,0) NOT NULL DEFAULT 0,
+    shipping_fee DECIMAL(12,0) NOT NULL DEFAULT 0,
+    grand_total DECIMAL(12,0) NOT NULL,
+    payment_method ENUM('cod') NOT NULL DEFAULT 'cod',
+    payment_status ENUM('unpaid', 'paid', 'refunded') NOT NULL DEFAULT 'unpaid',
+    order_status ENUM('pending', 'confirmed', 'shipping', 'delivered', 'cancelled') NOT NULL DEFAULT 'pending',
+    idempotency_key VARCHAR(64) DEFAULT NULL UNIQUE,
+    note TEXT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    INDEX idx_orders_user_id (user_id),
+    INDEX idx_orders_order_code (order_code),
+    INDEX idx_orders_order_status (order_status),
+    INDEX idx_orders_payment_status (payment_status),
+    INDEX idx_orders_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -1,0 +1,38 @@
+# Environment
+.env
+
+# Dependencies
+vendor/
+node_modules/
+
+# Uploads (keep directory structure)
+uploads/products/*
+!uploads/products/.gitkeep
+public/assets/images/products/uploads/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Cache
+cache/
+*.cache
+
+# Compiled
+*.phar
+
+# Temp
+tmp/
+temp/
