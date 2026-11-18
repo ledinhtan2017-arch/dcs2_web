@@ -71,6 +71,13 @@ $idempotencyKey = bin2hex(random_bytes(16));
                     <label for="pm-cod" style="font-weight:500;">💵 Thanh toán khi nhận hàng (COD)</label>
                 </div>
 
+                <?php if (\App\Models\BankTransfer::available()): ?>
+                <div style="padding:var(--space-lg);border:1px solid var(--color-hairline);border-radius:var(--rounded-md);margin-bottom:var(--space-xl);display:flex;align-items:center;gap:var(--space-md);">
+                    <input type="radio" name="payment_method" value="bank_transfer" id="pm-bank">
+                    <label for="pm-bank">Chuyển khoản ngân hàng — thông tin chuyển khoản sẽ hiển thị sau khi đặt hàng.</label>
+                </div>
+                <?php endif; ?>
+
                 <button type="submit" class="btn btn-primary" style="width:100%;font-size:18px;height:56px;" id="btn-submit">
                     Đặt hàng
                 </button>

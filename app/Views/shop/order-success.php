@@ -62,6 +62,8 @@
         <?php endif; ?>
     </div>
 
+    <?php require VIEW_PATH . '/shop/bank-transfer.php'; ?>
+
     <!-- Order Items -->
     <?php if (!empty($order['items'])): ?>
     <div style="text-align:left;margin-bottom:var(--space-xl);">
@@ -92,6 +94,7 @@
         <?php endif; ?>
         <?php if (!$auth_check && ($order['user_id'] ?? null) === null
             && ($order['order_status'] ?? '') === 'pending'
+            && !(($order['payment_method'] ?? '') === 'bank_transfer' && ($order['payment_status'] ?? '') === 'paid')
             && ($_SESSION['_guest_order_code'] ?? null) === ($order['order_code'] ?? '')): ?>
             <form action="/order-success/<?= rawurlencode($order['order_code']) ?>/cancel" method="post" onsubmit="return confirm('Bạn có chắc muốn hủy đơn hàng này?');">
                 <?= $csrf_field ?>

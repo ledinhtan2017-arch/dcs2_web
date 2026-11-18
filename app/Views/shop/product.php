@@ -122,11 +122,38 @@ $mainImage = $images[0] ?? null;
                     <p>• Giao hàng toàn quốc qua các đơn vị vận chuyển uy tín.</p>
                     <p>• Phí vận chuyển: <?= $formatPrice(\App\Config\env('SHIPPING_FEE', 30000)) ?></p>
                     <p>• Đổi trả trong vòng 7 ngày nếu sản phẩm lỗi từ nhà sản xuất.</p>
-                    <p>• Thanh toán: COD (thanh toán khi nhận hàng).</p>
+                    <p>• Thanh toán: COD<?php if (\App\Models\BankTransfer::available()): ?> hoặc chuyển khoản ngân hàng<?php endif; ?>.</p>
                 </div>
             </div>
         </div>
     </div>
+    <section id="reviews" class="section" style="margin-top:var(--space-xl);">
+        <h2 class="section-title">Đánh giá của khách hàng</h2>
+        <?php if (!empty($reviews)): ?>
+            <?php $average = array_sum(array_column($reviews, 'rating')) / count($reviews); ?>
+            <p style="margin-bottom:var(--space-lg);"><strong><?= number_format($average, 1) ?>/5 ★</strong> · <?= count($reviews) ?> đánh giá</p>
+            <?php foreach ($reviews as $review): ?>
+                <article style="padding:var(--space-md) 0;border-bottom:1px solid var(--color-hairline-soft);">
+                    <strong><?= htmlspecialchars($review['name']) ?></strong>
+                    <span aria-label="<?= (int)$review['rating'] ?> trên 5 sao" style="color:#a76700;margin-left:8px;"><?= str_repeat('★', (int)$review['rating']) . str_repeat('☆', 5-(int)$review['rating']) ?></span>
+                    <p><?= nl2br(htmlspecialchars($review['body'] ?? '')) ?></p>
+                </article>
+            <?php endforeach; ?>
+        <?php else: ?><p>Chưa có đánh giá nào.</p><?php endif; ?>
+
+        <?php if (!empty($reviewItem)): ?>
+            <form method="post" action="/products/<?= rawurlencode($product['slug']) ?>/reviews" style="margin-top:var(--space-xl);max-width:550px;">
+                <?= $csrf_field ?>
+                <input type="hidden" name="order_item_id" value="<?= (int)$reviewItem ?>">
+                <label class="form-label" for="review-rating">Đánh giá của bạn</label>
+                <select class="form-input" id="review-rating" name="rating" required><option value="">Chọn số sao</option><?php for ($i=5; $i>=1; $i--): ?><option value="<?= $i ?>"><?= $i ?> sao</option><?php endfor; ?></select>
+                <label class="form-label" for="review-body" style="margin-top:12px;">Nhận xét (không bắt buộc)</label>
+                <textarea class="form-input" id="review-body" name="body" rows="3" maxlength="2000"></textarea>
+                <button class="btn btn-primary" type="submit" style="margin-top:12px;">Gửi đánh giá</button>
+            </form>
+        <?php elseif (!$auth_check): ?><p style="margin-top:var(--space-lg);"><a href="/login">Đăng nhập</a> để đánh giá sản phẩm đã mua.</p>
+        <?php else: ?><p style="margin-top:var(--space-lg);">Bạn có thể đánh giá sau khi nhận sản phẩm.</p><?php endif; ?>
+    </section>
 </div>
 
 <script>

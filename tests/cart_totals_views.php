@@ -6,6 +6,7 @@ define('BASE_PATH', dirname(__DIR__));
 $_ENV['SHIPPING_FEE'] = '30000';
 require BASE_PATH . '/app/Config/config.php';
 require BASE_PATH . '/app/Models/Cart.php';
+require BASE_PATH . '/app/Models/BankTransfer.php';
 
 set_error_handler(static function (int $severity, string $message): void {
     throw new ErrorException($message, 0, $severity);

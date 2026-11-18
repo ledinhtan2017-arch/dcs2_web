@@ -13,13 +13,23 @@ class AdminController
         $stats = [
             'total_orders'    => (int)$pdo->query("SELECT COUNT(*) FROM orders")->fetchColumn(),
             'pending_orders'  => (int)$pdo->query("SELECT COUNT(*) FROM orders WHERE order_status='pending'")->fetchColumn(),
-            'total_revenue'   => (int)$pdo->query("SELECT COALESCE(SUM(grand_total),0) FROM orders WHERE order_status IN ('confirmed','shipping','delivered')")->fetchColumn(),
+            'total_revenue'   => (int)$pdo->query("SELECT COALESCE(SUM(grand_total),0) FROM orders WHERE payment_status='paid' AND order_status <> 'cancelled'")->fetchColumn(),
             'total_products'  => (int)$pdo->query("SELECT COUNT(*) FROM products")->fetchColumn(),
             'total_users'     => (int)$pdo->query("SELECT COUNT(*) FROM users WHERE role='customer'")->fetchColumn(),
             'low_stock'       => (int)$pdo->query("SELECT COUNT(*) FROM product_variants WHERE stock_quantity <= 5 AND is_active=1")->fetchColumn(),
         ];
         $recentOrders = $pdo->query("SELECT * FROM orders ORDER BY created_at DESC LIMIT 10")->fetchAll();
-        View::page('admin.dashboard', ['title' => 'Admin Dashboard', 'stats' => $stats, 'recentOrders' => $recentOrders], 'layouts.admin');
+        $start = (new \DateTimeImmutable('today'))->modify('-29 days');
+        $stmt = $pdo->prepare("SELECT DATE(created_at) AS day, SUM(grand_total) AS revenue FROM orders WHERE payment_status='paid' AND order_status <> 'cancelled' AND created_at >= :start GROUP BY DATE(created_at)");
+        $stmt->execute([':start' => $start->format('Y-m-d 00:00:00')]);
+        $amounts = [];
+        foreach ($stmt->fetchAll() as $row) $amounts[$row['day']] = (int) $row['revenue'];
+        $sales = [];
+        for ($i = 0; $i < 30; $i++) {
+            $day = $start->modify('+' . $i . ' days')->format('Y-m-d');
+            $sales[] = ['date' => $day, 'amount' => $amounts[$day] ?? 0];
+        }
+        View::page('admin.dashboard', ['title' => 'Admin Dashboard', 'stats' => $stats, 'recentOrders' => $recentOrders, 'sales' => $sales], 'layouts.admin');
     }
 
     public function products(): void

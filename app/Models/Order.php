@@ -25,6 +25,9 @@ class Order
     public static function create(array $orderData, array $items): ?array
     {
         $pdo = Database::getConnection();
+        $paymentMethod = $orderData['payment_method'] ?? 'cod';
+        if (!in_array($paymentMethod, ['cod', 'bank_transfer'], true)
+            || ($paymentMethod === 'bank_transfer' && !BankTransfer::available())) return null;
 
         // A zero or duplicate quantity must never be able to increase stock
         // or bypass the stock check during checkout.
@@ -100,7 +103,7 @@ class Order
                     payment_method, payment_status, order_status, idempotency_key, note)
                 VALUES (:code, :uid, :name, :email, :phone,
                     :addr, :subtotal, :discount, :ship, :total,
-                    'cod', 'unpaid', 'pending', :ikey, :note)
+                    :payment_method, 'unpaid', 'pending', :ikey, :note)
             ");
             $stmt->execute([
                 ':code'     => $orderCode,
@@ -113,6 +116,7 @@ class Order
                 ':discount' => 0,
                 ':ship'     => $shippingFee,
                 ':total'    => $grandTotal,
+                ':payment_method' => $paymentMethod,
                 ':ikey'     => $orderData['idempotency_key'] ?? null,
                 ':note'     => $orderData['note'] ?? null,
             ]);
@@ -149,8 +153,8 @@ class Order
             // Insert payment record
             $pdo->prepare("
                 INSERT INTO payments (order_id, provider, amount, status)
-                VALUES (:oid, 'cod', :amount, 'pending')
-            ")->execute([':oid' => $orderId, ':amount' => $grandTotal]);
+                VALUES (:oid, :provider, :amount, 'pending')
+            ")->execute([':oid' => $orderId, ':provider' => $paymentMethod, ':amount' => $grandTotal]);
 
             $pdo->commit();
 
@@ -267,8 +271,8 @@ class Order
             // Serialize state changes so two cancellation requests cannot both
             // restore inventory for the same order.
             $stmt = $pdo->prepare(is_int($orderKey)
-                ? "SELECT id, user_id, order_status FROM orders WHERE id = :key FOR UPDATE"
-                : "SELECT id, user_id, order_status FROM orders WHERE order_code = :key FOR UPDATE");
+                ? "SELECT id, user_id, order_status, payment_method, payment_status FROM orders WHERE id = :key FOR UPDATE"
+                : "SELECT id, user_id, order_status, payment_method, payment_status FROM orders WHERE order_code = :key FOR UPDATE");
             $stmt->execute([':key' => $orderKey]);
             $order = $stmt->fetch();
             $currentStatus = $order['order_status'] ?? null;
@@ -276,6 +280,8 @@ class Order
                 ? ($order && $order['user_id'] === null)
                 : ($order && $order['user_id'] !== null && (int) $order['user_id'] === $actorId));
             if (!$currentStatus || !$ownerMatches || ($customerCancellation && $currentStatus !== 'pending')
+                || ($newStatus === 'cancelled' && $order['payment_method'] === 'bank_transfer' && $order['payment_status'] === 'paid')
+                || ($newStatus === 'shipping' && $order['payment_method'] === 'bank_transfer' && $order['payment_status'] !== 'paid')
                 || !in_array($newStatus, $validTransitions[$currentStatus] ?? [], true)) {
                 $pdo->rollBack();
                 return false;
@@ -298,7 +304,7 @@ class Order
             }
 
             // If delivered, mark payment as completed for COD
-            if ($newStatus === 'delivered') {
+            if ($newStatus === 'delivered' && $order['payment_method'] === 'cod') {
                 $pdo->prepare("UPDATE orders SET payment_status = 'paid' WHERE id = :id")
                     ->execute([':id' => $orderId]);
                 $pdo->prepare("UPDATE payments SET status = 'completed' WHERE order_id = :oid")
@@ -317,6 +323,36 @@ class Order
                 ':note' => $note,
             ]);
 
+            $pdo->commit();
+            return true;
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    /** Confirm a bank transfer only after checking the bank transaction. */
+    public static function confirmBankPayment(int $orderId): bool
+    {
+        $pdo = Database::getConnection();
+        try {
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare('SELECT payment_method, payment_status, order_status, grand_total FROM orders WHERE id = ? FOR UPDATE');
+            $stmt->execute([$orderId]);
+            $order = $stmt->fetch();
+            if (!$order || $order['payment_method'] !== 'bank_transfer' || $order['payment_status'] !== 'unpaid' || $order['order_status'] === 'cancelled') {
+                $pdo->rollBack();
+                return false;
+            }
+            $payment = $pdo->prepare("SELECT id, amount FROM payments WHERE order_id = ? AND provider = 'bank_transfer' AND status = 'pending' FOR UPDATE");
+            $payment->execute([$orderId]);
+            $record = $payment->fetch();
+            if (!$record || (int)$record['amount'] !== (int)$order['grand_total']) {
+                $pdo->rollBack();
+                return false;
+            }
+            $pdo->prepare("UPDATE orders SET payment_status = 'paid' WHERE id = ?")->execute([$orderId]);
+            $pdo->prepare("UPDATE payments SET status = 'completed' WHERE id = ?")->execute([$record['id']]);
             $pdo->commit();
             return true;
         } catch (\Throwable $e) {

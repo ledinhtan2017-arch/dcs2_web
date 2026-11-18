@@ -24,7 +24,7 @@ $statusMap = [
     </div>
     <div class="stat-card">
         <div class="stat-value"><?= number_format((int)($stats['total_revenue'] ?? 0), 0, ',', '.') ?> ₫</div>
-        <div class="stat-label">Doanh thu</div>
+        <div class="stat-label">Doanh thu đã thanh toán</div>
     </div>
     <div class="stat-card">
         <div class="stat-value"><?= (int)($stats['total_products'] ?? 0) ?></div>
@@ -41,6 +41,23 @@ $statusMap = [
         <div class="stat-label">Sắp hết hàng</div>
     </div>
 </div>
+
+<section class="sales-chart" aria-labelledby="sales-chart-title">
+    <h2 id="sales-chart-title">Doanh số 30 ngày gần đây</h2>
+    <p>Đơn đã thanh toán, theo ngày đặt hàng; bao gồm phí vận chuyển.</p>
+    <?php $maxSales = max(1, ...array_column($sales, 'amount')); ?>
+    <div class="sales-chart-bars" role="img" aria-label="Biểu đồ doanh số theo ngày đặt hàng trong 30 ngày gần đây. Bảng số liệu phía dưới.">
+        <?php foreach ($sales as $day): ?>
+            <div class="sales-chart-column" title="<?= date('d/m/Y', strtotime($day['date'])) ?>: <?= number_format($day['amount'], 0, ',', '.') ?> ₫">
+                <span style="height:<?= $day['amount'] ? max(2, $day['amount'] / $maxSales * 100) : 0 ?>%"></span>
+            </div>
+        <?php endforeach; ?>
+    </div>
+    <div class="sales-chart-axis"><span><?= date('d/m', strtotime($sales[0]['date'])) ?></span><span><?= date('d/m', strtotime($sales[count($sales)-1]['date'])) ?></span></div>
+    <details><summary>Xem số liệu từng ngày</summary><table class="data-table"><thead><tr><th>Ngày đặt</th><th>Doanh số</th></tr></thead><tbody>
+        <?php foreach (array_reverse($sales) as $day): ?><tr><td><?= date('d/m/Y', strtotime($day['date'])) ?></td><td><?= number_format($day['amount'], 0, ',', '.') ?> ₫</td></tr><?php endforeach; ?>
+    </tbody></table></details>
+</section>
 
 <h2 style="margin-bottom:var(--space-lg);">Đơn hàng gần đây</h2>
 

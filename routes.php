@@ -24,6 +24,7 @@ $router->post('/login',                  'AuthController@login');
 $router->get('/register',               'AuthController@showRegister');
 $router->post('/register',              'AuthController@register');
 $router->post('/logout',                'AuthController@logout');
+$router->post('/products/{slug}/reviews', 'ReviewController@store', [AuthMiddleware::class]);
 
 // ─── CART PAGES ──────────────────────────────────────────────────────
 $router->get('/cart',                    'CartController@show');
@@ -64,7 +65,7 @@ $router->group('api', function ($router) {
     $router->get('/auth/me',             'Api\AuthApiController@me');
 
     // Checkout
-    $router->post('/checkout',           'Api\CheckoutApiController@process');
+    $router->post('/checkout',           'Api\CheckoutApiController@process', [CSRFMiddleware::class]);
 
     // Orders (owner or guest with token)
     $router->get('/orders/{code}',       'Api\OrderApiController@show');
@@ -102,6 +103,7 @@ $router->group('api/admin', function ($router) {
     $router->get('/orders',              'Api\Admin\OrderApiController@index');
     $router->get('/orders/{id}',         'Api\Admin\OrderApiController@show');
     $router->patch('/orders/{id}/status','Api\Admin\OrderApiController@updateStatus', [CSRFMiddleware::class]);
+    $router->post('/orders/{id}/confirm-payment','Api\Admin\OrderApiController@confirmPayment', [CSRFMiddleware::class]);
 
     // Users
     $router->get('/users',               'Api\Admin\UserApiController@index');

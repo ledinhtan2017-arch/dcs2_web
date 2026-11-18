@@ -5,6 +5,11 @@ use App\Models\Order;
 
 class OrderApiController
 {
+    public function confirmPayment(string $id): void
+    {
+        if (!Order::confirmBankPayment((int) $id)) Response::error('Không thể xác nhận thanh toán cho đơn này.', 'INVALID_PAYMENT', 409);
+        Response::success(['message' => 'Đã xác nhận thanh toán.']);
+    }
     public function index(): void
     {
         $pdo = Database::getConnection();
@@ -40,7 +45,7 @@ class OrderApiController
         }
 
         $ok = Order::updateStatus((int)$id, $newStatus, Auth::id(), $note);
-        if (!$ok) Response::error('Không thể chuyển trạng thái. Kiểm tra trạng thái hiện tại.', 'INVALID_TRANSITION', 409);
+        if (!$ok) Response::error('Không thể chuyển trạng thái. Kiểm tra trạng thái đơn và thanh toán; đơn chuyển khoản cần được xác nhận tiền trước khi giao.', 'INVALID_TRANSITION', 409);
         Response::success(['message' => 'Cập nhật trạng thái thành công.']);
     }
 }

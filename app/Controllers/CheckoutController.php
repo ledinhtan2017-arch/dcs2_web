@@ -79,6 +79,12 @@ class CheckoutController
             return;
         }
 
+        $paymentMethod = $request->post('payment_method', 'cod');
+        if (!in_array($paymentMethod, ['cod', 'bank_transfer'], true) || ($paymentMethod === 'bank_transfer' && !\App\Models\BankTransfer::available())) {
+            Response::flash('error', 'Phương thức thanh toán không khả dụng.');
+            Response::redirect('/checkout');
+        }
+
         // Generate idempotency key from session
         $idempotencyKey = $request->post('_idempotency_key', '');
         if (empty($idempotencyKey)) {
@@ -98,6 +104,7 @@ class CheckoutController
             ],
             'note'            => $data['note'],
             'idempotency_key' => $idempotencyKey,
+            'payment_method'  => $paymentMethod,
         ];
 
         $orderItems = [];

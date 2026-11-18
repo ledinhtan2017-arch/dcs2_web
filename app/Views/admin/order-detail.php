@@ -19,6 +19,9 @@ $transitions = [
 ];
 $curStatus = $order['order_status'] ?? 'pending';
 $nextStatuses = $transitions[$curStatus] ?? [];
+if (($order['payment_method'] ?? '') === 'bank_transfer' && ($order['payment_status'] ?? '') === 'paid') {
+    $nextStatuses = array_values(array_diff($nextStatuses, ['cancelled']));
+}
 ?>
 <div class="breadcrumb" style="margin-bottom:var(--space-xl);">
     <a href="/admin/orders">Đơn hàng</a>
@@ -50,7 +53,11 @@ $nextStatuses = $transitions[$curStatus] ?? [];
                 <span class="badge badge-<?= htmlspecialchars($curStatus) ?>"><?= $statusMap[$curStatus] ?? $curStatus ?></span></div>
             <div><span style="color:var(--color-mute);font-size:14px;">Ngày đặt:</span>
                 <?= date('d/m/Y H:i', strtotime($order['created_at'] ?? 'now')) ?></div>
-            <div><span style="color:var(--color-mute);font-size:14px;">Thanh toán:</span> COD</div>
+            <div><span style="color:var(--color-mute);font-size:14px;">Thanh toán:</span> <?= ($order['payment_method'] ?? 'cod') === 'bank_transfer' ? 'Chuyển khoản' : 'COD' ?> — <?= ($order['payment_status'] ?? '') === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán' ?></div>
+            <?php if (($order['payment_method'] ?? '') === 'bank_transfer' && ($order['payment_status'] ?? '') === 'unpaid' && $curStatus !== 'cancelled'): ?>
+                <button type="button" class="btn btn-sm btn-outline" onclick="confirmPayment(<?= (int)$order['id'] ?>)">Xác nhận đã nhận tiền</button>
+                <small>Chỉ xác nhận sau khi kiểm tra giao dịch ngân hàng. Đơn chuyển khoản cần thanh toán trước khi giao.</small>
+            <?php endif; ?>
         </div>
     </div>
     <div style="background:var(--color-canvas);padding:var(--space-xl);border-radius:var(--space-sm);">
@@ -133,6 +140,13 @@ $nextStatuses = $transitions[$curStatus] ?? [];
 <?php endif; ?>
 
 <script>
+function confirmPayment(id) {
+    if (!confirm('Bạn đã kiểm tra và nhận được tiền chuyển khoản?')) return;
+    apiFetch('/api/admin/orders/' + id + '/confirm-payment', {method: 'POST'})
+        .then(function(r) { return r.json(); })
+        .then(function(data) { if (data.success) location.reload(); else alert((data.error && data.error.message) || 'Không thể xác nhận thanh toán.'); })
+        .catch(function() { alert('Lỗi kết nối.'); });
+}
 function updateOrderStatus(orderId, newStatus) {
     var label = {pending:'Chờ xác nhận',confirmed:'Đã xác nhận',shipping:'Đang giao',delivered:'Đã giao',cancelled:'Đã hủy'};
     if (!confirm('Chuyển sang trạng thái: ' + (label[newStatus] || newStatus) + '?')) return;
@@ -144,13 +158,12 @@ function updateOrderStatus(orderId, newStatus) {
     .then(function(r) { return r.json(); })
     .then(function(json) {
         if (json.success) {
-            showToast('Cập nhật thành công!');
-            setTimeout(function() { location.reload(); }, 800);
+            location.reload();
         } else {
-            showToast((json.error && json.error.message) || 'Cập nhật thất bại', 'error');
+            alert((json.error && json.error.message) || 'Cập nhật thất bại');
         }
     })
-    .catch(function() { showToast('Lỗi kết nối', 'error'); });
+    .catch(function() { alert('Lỗi kết nối'); });
 }
 </script>
 

@@ -16,7 +16,7 @@ Website bán đồ thể thao với PHP thuần (không framework) và MySQL.
 | Hỗ trợ | Đã có trang hướng dẫn mua hàng, vận chuyển, đổi trả và liên hệ. Nội dung liên hệ và điều kiện đổi trả cần chủ cửa hàng bổ sung. |
 | Kiểm thử | Đã có kiểm thử dùng bảng MySQL tạm cho vòng đời đơn hàng, hủy đơn, quyền truy cập, CSRF và quản lý sản phẩm. Cần tiếp tục kiểm tra giao diện và toàn bộ quy trình thực tế trên trình duyệt. |
 
-Các tính năng chưa triển khai gồm thanh toán trực tuyến và khôi phục mật khẩu. Bảng milestone trong `docs/PROGRESS.md` là ghi chép ban đầu và chưa phản ánh đầy đủ các thay đổi hiện tại.
+Đã bổ sung đánh giá 1–5 sao cho khách đã nhận sản phẩm, chuyển khoản được quản trị viên xác nhận thủ công và biểu đồ doanh số trong 30 ngày. Chưa có tích hợp cổng thanh toán tự động hoặc khôi phục mật khẩu. Bảng milestone trong `docs/PROGRESS.md` là ghi chép ban đầu và chưa phản ánh đầy đủ các thay đổi hiện tại.
 
 ## 📋 Yêu cầu hệ thống
 
@@ -87,6 +87,20 @@ C:\xampp\php\php.exe database/seeds/seed.php
 
 Nếu database đã có dữ liệu, không cần chạy lại seed. Khi tạo admin lần đầu, seed yêu cầu mật khẩu; `admin123` là mặc định khi nhập mật khẩu không hợp lệ hoặc để trống.
 
+### Thanh toán chuyển khoản
+
+Chạy migration khi cập nhật dự án để thêm phương thức chuyển khoản vào database. Điền ba giá trị sau trong file `.env` của máy chủ (không đưa `.env` lên Git):
+
+```ini
+BANK_NAME=Tên ngân hàng
+BANK_ACCOUNT_NUMBER=Số tài khoản
+BANK_ACCOUNT_NAME=Tên chủ tài khoản
+```
+
+Sau khi điền đủ, khách có thể chọn chuyển khoản và dùng mã đơn làm nội dung chuyển tiền. Trong chi tiết đơn, quản trị viên kiểm tra giao dịch ngân hàng và bấm **Xác nhận đã nhận tiền**. Hệ thống không tự kết nối ngân hàng hay tự xác minh giao dịch. Đơn chuyển khoản chỉ chuyển sang giao hàng sau khi được xác nhận thanh toán; đơn chuyển khoản đã thanh toán cần xử lý hoàn tiền riêng và không thể hủy trực tiếp trong hệ thống.
+
+Biểu đồ admin tính tổng giá trị đơn đã thanh toán theo ngày đặt, bao gồm phí vận chuyển; không tính đơn đã hủy. Khách đăng nhập có thể đánh giá sản phẩm sau khi đơn được giao, mỗi dòng sản phẩm trong đơn được đánh giá một lần.
+
 ### Quản lý ảnh và sản phẩm
 
 Đăng nhập admin, vào **Sản phẩm**, chọn **Sửa** rồi dùng mục **Ảnh sản phẩm** để tải ảnh JPG, PNG hoặc WebP (tối đa 5 MB) và chọn ảnh chính. Với sản phẩm mới, tạo sản phẩm trước rồi mở lại trang sửa để thêm ảnh. Giá và tồn kho được quản lý theo từng biến thể; bỏ chọn **Đang bán** để ngừng bán một biến thể.
@@ -97,6 +111,7 @@ Các kiểm thử dưới đây dùng bảng tạm của kết nối để khôn
 
 ```powershell
 C:\xampp\php\php.exe tests/order_lifecycle.php
+C:\xampp\php\php.exe tests/review_bank_transfer.php
 C:\xampp\php\php.exe tests/customer_order_cancel.php
 C:\xampp\php\php.exe tests/customer_cancel_route.php guest_missing_token
 C:\xampp\php\php.exe tests/customer_cancel_route.php guest_wrong_session

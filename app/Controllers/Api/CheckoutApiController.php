@@ -24,6 +24,10 @@ class CheckoutApiController
             'ward' => 'Phường/Xã', 'street' => 'Địa chỉ'
         ]);
         if (!$v['valid']) Response::error(implode(' ', $v['errors']), 'VALIDATION_ERROR', 422);
+        $paymentMethod = $data['payment_method'] ?? 'cod';
+        if (!in_array($paymentMethod, ['cod', 'bank_transfer'], true) || ($paymentMethod === 'bank_transfer' && !\App\Models\BankTransfer::available())) {
+            Response::error('Phương thức thanh toán không khả dụng.', 'INVALID_PAYMENT_METHOD', 422);
+        }
 
         $cart = Cart::getOrCreate();
         $items = Cart::getItems((int)$cart['id']);
@@ -46,12 +50,14 @@ class CheckoutApiController
             ],
             'note' => $data['note'] ?? '',
             'idempotency_key' => $ikey,
+            'payment_method' => $paymentMethod,
         ];
 
         try {
             $order = Order::create($orderData, $orderItems);
             if (!$order) Response::error('Không thể tạo đơn. Sản phẩm có thể đã hết hàng.', 'ORDER_FAILED', 409);
             Cart::clear((int)$cart['id']);
+            if (!Auth::check()) $_SESSION['_guest_order_code'] = $order['order_code'];
             Response::success($order, null, 201);
         } catch (\Throwable $e) {
             error_log('[API Checkout] ' . $e->getMessage());

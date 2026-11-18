@@ -100,6 +100,8 @@ class ShopController
         View::page('shop.product', [
             'title'   => $product['name'] . ' - Sport Shop',
             'product' => $product,
+            'reviews' => \App\Models\Review::forProduct((int)$product['id']),
+            'reviewItem' => \App\Core\Auth::check() ? \App\Models\Review::eligibleItem((int)$product['id'], \App\Core\Auth::id()) : null,
         ]);
     }
 

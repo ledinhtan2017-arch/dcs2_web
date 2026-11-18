@@ -23,7 +23,7 @@ $statusMap = [
 
         <h1>Đơn hàng <?= htmlspecialchars($order['order_code'] ?? '') ?></h1>
 
-        <?php if (($order['order_status'] ?? '') === 'pending'): ?>
+        <?php if (($order['order_status'] ?? '') === 'pending' && !(($order['payment_method'] ?? '') === 'bank_transfer' && ($order['payment_status'] ?? '') === 'paid')): ?>
         <form method="post" action="/account/orders/<?= rawurlencode($order['order_code']) ?>/cancel"
               onsubmit="return confirm('Bạn có chắc muốn hủy đơn hàng này?');"
               style="margin:var(--space-lg) 0;">
@@ -74,6 +74,8 @@ $statusMap = [
                 </div>
             <?php endif; ?>
         </div>
+
+        <?php require VIEW_PATH . '/shop/bank-transfer.php'; ?>
 
         <!-- Order Items -->
         <h2 style="margin-bottom:var(--space-lg);">Sản phẩm</h2>
